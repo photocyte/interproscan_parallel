@@ -1,11 +1,19 @@
 // Also, see here https://lipm-gitlab.toulouse.inra.fr/LIPM-BIOINFO/nextflow-interproscan5/blob/master/interproscan.nf
 nextflow.enable.dsl=2
 
-include { download_pfam_A } from '/home/tfallon/databases/pfam/pfam.nf'
-include { prepare_pfam_A } from '/home/tfallon/databases/pfam/pfam.nf'
-include { pfam_run } from '/home/tfallon/databases/pfam/pfam.nf'
-include { hmmpress_generic } from '/home/tfallon/databases/pfam/pfam.nf'
-include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; split_gff_by_seqid ; DNA_features_viewer } from '/home/tfallon/source/nextflow/interproscan_parallel/dna_features_viewer.nf'
+include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic } from '/home/tfallon/databases/pfam/pfam.nf'
+include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; split_gff_by_seqid ; DNA_features_viewer } from '/home/tfallon/source/nextflow/dna_features_viewer/dna_features_viewer.nf'
+include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/utility/utility.nf'
+
+process download_ipr2go {
+storeDir "results/${task.process}"
+output:
+ path "interpro2go.txt"
+shell:
+'''
+wget http://www.geneontology.org/external2go/interpro2go -O interpro2go.txt
+'''
+}
 
 process interproscan_run {
     publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
@@ -29,10 +37,13 @@ process interproscan_run {
      path "*.tsv", emit: tsvs 
      path "*.tsv.sites", emit: sites, optional:true
      path "*.xml", emit: xmls
-    script:
-      """
-      /home/tfallon/software/interproscan-5.51-85.0/interproscan.sh --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu ${task.cpus} -i ${inputFasta} --tempdir ./
-      """
+    shell:
+      '''
+      ##Removed MobiDBLite, as it had been crashing
+      ##CDD was also crashing with a rpsbproc dependency issue
+      APPLS="COILS,Gene3D,HAMAP,PANTHER,Pfam,PIRSF,PRINTS,PROSITEPATTERNS,PROSITEPROFILES,SFLD,SMART,SUPERFAMILY,TIGRFAM"
+      /home/tfallon/software/interproscan-5.60-92.0/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
+      '''
 }
 
 process hmm_subset {
@@ -56,9 +67,9 @@ output:
  path "results/${fasta}"
 shell:
 '''
-##Note the additional backslash for Nextflow escaping
+##Note the additional backslash for Nextflow escaping. Replace internal '*'s with Xs.
 mkdir results
-seqkit replace -s -p "\\*$" -r "" !{fasta} > results/!{fasta}
+seqkit replace -s -p "\\*$" -r "" !{fasta} | seqkit replace -s -p "\\*" -r "X" > results/!{fasta}
 '''
 }
 
@@ -164,12 +175,14 @@ w_handle.close()
 process gff_score_filter {
 input:
  path inputGff
+ val scoreToFilterBy //e.g. 1E-3
 output:
  path "filtered/${inputGff}"
+conda 'bioawk genometools-genometools'
 shell:
 '''
 mkdir filtered
-cat !{inputGff} | bioawk -c gff '$score < 1E-3{ print $0 }' | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
+cat !{inputGff} | bioawk -c gff '$score < !{scoreToFilterBy}{ print $0 }' | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
 '''
 }
 
@@ -189,6 +202,8 @@ python ../../../pfam2gff.py -i !{hmmsearch_tbl} -e 1e-3 > !{hmmsearch_tbl}.gff
 }
 
 process gff_nested_filter {
+publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+conda 'bedops'
 input:
  path inputGff
 output:
@@ -197,31 +212,63 @@ shell:
 '''
 ##See here for this trick
 ## https://www.biostars.org/p/272676/
+## https://bedops.readthedocs.io/en/latest/content/reference/set-operations/nested-elements.html
 mkdir filtered
-cat !{inputGff} | gff2bed > !{inputGff}.bed
+cat !{inputGff} | awk -v "FS=\t" -v "OFS=\t" '{print $1,$2,$3,$5}' > !{inputGff}.bed
+#convert2bed --input=gff !{inputGff} > !{inputGff}.bed
 
 ##Basically a reimplmentation of the awk script
+##But, had to modify it so it not just "previous feature", but all previous features where prev_end >= cur_start
 python -c "
-r_handle = open('!{inputGff}.bed')
-w_handle = open('nested.bed','w')
-prev_start = 0
-prev_end = 0
+r_handle = open('!{inputGff}')
+w_handle = open('nested.gff','w')
+prev_features = dict()
+
+SKIP_TYPES=['polypeptide']
+
 for l in r_handle.readlines():
     if l[0] == '#':
         continue
     sl = l.split('\t')
-    cur_start = int(sl[1])
-    cur_end = int(sl[2])
-    if (prev_start <= cur_start) and (prev_end >= cur_end):
-        ##Fully overlapped
-        w_handle.write(l)
-    prev_start = cur_start
-    prev_end = cur_end
+    cur_start = int(sl[3])
+    cur_end = int(sl[4])
+    cur_type = sl[2].strip()
+    
+    if cur_type in SKIP_TYPES:
+        print('Skipping',sl)
+        continue
+
+    ##Evaluate previous features, drop non relevant ones
+    droppable = []
+    for f in prev_features:
+        if prev_features[f]['end'] < cur_start:
+            ##This feature is no longer relevant
+            droppable.append(f)
+    [prev_features.pop(key) for key in droppable] ##Safely drop all features from the dictionary
+
+    for f in prev_features:
+        if (prev_features[f]['start'] <= cur_start) and (prev_features[f]['end'] >= cur_end):
+            ##Fully overlapped (nested), left nested, right nested, or fully coincident with 'some feature'
+            w_handle.write(l) ##Mark for future filtering
+            break
+
+    prev_features[l] = {'start':cur_start,'end':cur_end}
 r_handle.close()
 w_handle.close()
 "
-cat nested.bed | bedops --not-element-of 100% !{inputGff}.bed - > !{inputGff}.fil.bed
-grep -f <(cut -f 4 !{inputGff}.fil.bed) !{inputGff} | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
+
+##Old way
+#cat nested.bed | bedops --not-element-of 100% !{inputGff}.bed - > !{inputGff}.fil.bed
+#grep -f <(cut -f 4 !{inputGff}.fil.bed) !{inputGff} | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
+
+##This also seemed to not work quite right.
+##bedtools subtract -A -f 1.0 -r -a !{inputGff} -b nested.bed | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
+
+
+grep -v -f <(cut -f 1,2,3,4,5 nested.gff) !{inputGff} | grep -vP "^###$" > filtered/!{inputGff}
+
+#grep -v -f nested.gff !{inputGff} > filtered/!{inputGff}
+
 '''
 
 }
@@ -243,6 +290,7 @@ cat fastas.txt | xargs -n 1 seqkit seq > ipr_merged.fasta
 process merge_gff {
     cpus 1
     publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    conda 'genometools-genometools'
     input:
      path collected_Gffs
     output:
@@ -260,6 +308,7 @@ process merge_gff {
 
 process gt_extractfeat {
 publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+conda 'genometools-genometools seqkit'
 input:
  path gff
  path fasta
@@ -273,7 +322,9 @@ types=("hmmsearch" "protein_match")
 for t in ${types[@]}; do
    gt extractfeat -matchdescstart -type ${t} -retainids -coords -seqfile !{fasta} !{gff} > results/!{gff}.${t}.fa
 done
-seqkit seq ./results/*.fa > !{gff}.fa
+
+##seqkit replace is done, as some programs don't like colons, e.g. raxml-ng
+seqkit seq ./results/*.fa | seqkit replace -p ":" -r "=" > !{gff}.fa
 '''
 }
 
@@ -291,6 +342,21 @@ process ipr_svg {
       tar xzf *.tar.gz
       '''
 }
+
+process ipr_shorten_gff {
+    cpus 1
+    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    input:
+     path gff
+    output:
+     path "results/${gff}"
+    shell:
+      '''
+      mkdir results
+      cat !{gff} | sed -E 's^,"MetaCyc.+^^g' > results/!{gff}
+      '''
+}
+
 
 process gt_sketch_svg {
     cpus 1
@@ -316,86 +382,51 @@ process gt_sketch_svg {
       '''
 }
 
-process DNA_features_viewer {
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
-    input:
-     tuple path(gff),path(colors),path(renaming)
-    output:
-     path "*.dfv.svg"
-    tag "${gff}"
-    shell:
+process extract_non_annotated {
+publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+input:
+ path gff
+ path fasta
+ val minlength
+output:
+ path('non_annotated-lenfilter.fa')
+ path('non_annotated-lenfilter.gff')
+conda 'bedops bedtools grep agat seqkit genometools-genometools'
+shell:
 '''
-#! /usr/bin/env python
-##installed with:
-##pip install dna_features_viewer
-##pip install bcbio-gff
-## Note the additional backslash for Nextflow escaping
+cat !{gff} | grep "md5=" | gff2bed > polypeptide.bed
 
-import matplotlib.pyplot as plt
-plt.rcParams['svg.fonttype'] = 'none'
-pep_name = None
-global accepted_sources
-accepted_sources = ["Gene3D","SUPERFAMILY","PFAM"]
-global accepted_types
-accepted_types = ["protein_match","hmmsearch"]
+bedtools subtract -a polypeptide.bed -b <(cat !{gff} | grep -vP "\tpolypeptide\t") | bedtools sort > non_annotated.bed
+cat non_annotated.bed | awk '($3-$2) >=!{minlength}' > non_annotated-lenfilter.bed
+agat_convert_bed2gff.pl --bed non_annotated-lenfilter.bed -o non_annotated-lenfilter.tmp.gff
 
-##This just sets the pep_name from the seqid in the gff file
-r_handle = open("!{gff}","r")
-for l in r_handle.readlines():
-    split_l = l.split("\\t")
-    if l[0] == "#":
-        continue
-    if len(split_l) > 2 and split_l[2] in accepted_types:
-        pep_name = split_l[0]
-r_handle.close()
+##Just rename gene to polypeptide
+cat non_annotated-lenfilter.tmp.gff | sed 's/\tgene\t/\tpolypeptide\t/g' | gt gff3 -tidy -sort -retainids > non_annotated-lenfilter.gff
 
-##If the pep_name wasn't able to be set from the gff lines, just use the filename
-if pep_name == None:
-    pep_name = "!{gff}"
-    pep_name = pep_name[-3:] ##Strip off the suffix
+seqkit subseq --gtf non_annotated-lenfilter.gff !{fasta} > non_annotated-lenfilter.fa
 
-r_handle = open("!{colors}","r")
-color_kv = dict()
-for l in r_handle.readlines():
-    split_l = l.split("\\t")
-    color_kv[split_l[0]] = split_l[1]
-r_handle.close()
+##gt extractfeat -matchdescstart -type 'polypeptide' -retainids -coords -seqfile !{fasta} non_annotated-lenfilter.gff
 
-r_handle = open("!{renaming}","r")
-rename_kv = dict()
-for l in r_handle.readlines():
-    split_l = l.split("\\t")
-    rename_kv[split_l[0]] = split_l[1].strip()
-r_handle.close()
+## The below, is a weird way, to do a coordinate liftover from bed to gff-style coordinates, if outputting a bed instead of a gff
+#bedtools getfasta -fi !{fasta} -bed non_annotated-lenfilter.bed > non_annotated-lenfilter.tmp.fa
 
-from dna_features_viewer import BiopythonTranslator
+## A workaround to liftover the bed coordinates from 0-indexed to 1-indexed
+## A pox on whoever descided bed should be 0-indexed
+#cat non_annotated-lenfilter.tmp.fa | grep ">" | cut -f 2 -d ':' | awk -F'-' -v OFS='-' '{print ($1),$2 "\011" ($1+1),($2+1)}' > mapping.txt
+#seqkit replace -p '([0-9]+-[0-9]+)' -r '{kv}' -k mapping.txt non_annotated-lenfilter.tmp.fa > non_annotated-lenfilter.fa
+'''
+}
 
-class IPSCustomTranslator(BiopythonTranslator):
-
-    def compute_feature_color(self,feature):
-        print(feature)
-        print(dir(feature))
-        if feature.type in accepted_types and (feature.qualifiers["source"][0] in accepted_sources):
-             return color_kv[feature.qualifiers["Name"][0]].strip()
-        else:
-            return "gold"
-
-    def compute_feature_label(self, feature):
-        if feature.type == 'polypeptide':
-            return feature.qualifiers["ID"][0]
-        elif feature.type in accepted_types and (feature.qualifiers["source"][0] in accepted_sources):
-            theName = feature.qualifiers["Name"][0]
-            if theName in rename_kv.keys():
-                return rename_kv[theName]
-            else:
-                return feature.qualifiers["Name"][0]
-        else:
-            return BiopythonTranslator.compute_feature_label(self, feature)
-
-graphic_record = IPSCustomTranslator().translate_record("!{gff}")
-print(dir(graphic_record))
-ax, _ = graphic_record.plot(figure_width=len(graphic_record.sequence)/100.0, strand_in_label_threshold=7)
-ax.figure.savefig(pep_name+'.dfv.svg', bbox_inches='tight') # SAVE AS SVG
+process filter_ACP_domain {
+input:
+ path(fasta)
+output:
+ path("results/${fasta}")
+shell:
+'''
+##See https://www.ebi.ac.uk/interpro/entry/InterPro/IPR036736/, "Contributing Member Database Entries"
+mkdir results
+seqkit grep -n -r -p "G3DSA:1.10.1200.10" !{fasta} > results/!{fasta}
 '''
 }
 
@@ -408,7 +439,10 @@ workflow getTargets {
  targetHmms = Channel.fromList(targets)
  hmm_subset(targetHmms,prepare_pfam_A.out.notpressed) 
  hmm_subset.out.collectFile(name: 'targets.hmm') | hmmpress_generic
- pfam_run(fasta.combine(hmmpress_generic.out))
+ detab(fasta) //ran into a FASTA file where the ID was separated with tabs, instead of spaces. It broke seqkit grep -f
+ debar(detab.out)
+ //decolon(debar.out)
+ pfam_run(debar.out.combine(hmmpress_generic.out))
  emit:
       pfam_run.out.matched
 }
@@ -418,14 +452,15 @@ take:
    peptideFastas
 main:
     pfamA = channel.fromPath("/home/tfallon/databases/pfam/hmmpress/Pfam-A/Pfam-A.hmm.*").toSortedList()
-    pfamB = channel.fromPath("/home/tfallon/databases/pfam/hmmpress/Pfam-B/Pfam-B.hmm.*").toSortedList()
-    pfams = pfamA.mix(pfamB)
-    pfam_run(peptideFastas.combine(pfams))
+    //pfamB = channel.fromPath("/home/tfallon/databases/pfam/hmmpress/Pfam-B/Pfam-B.hmm.*").toSortedList()
+    //pfams = pfamA.mix(pfamB)
+    //pfam_run(peptideFastas.combine(pfams))
+    pfam_run(peptideFastas.combine(pfamA))
     hmmersearch2gff(pfam_run.out.tbl)
-    gff_score_filter(hmmersearch2gff.out)
-    gff_nested_filter(gff_score_filter.out)
+    gff_score_filter(hmmersearch2gff.out,'1E-3')
+    //gff_nested_filter(gff_score_filter.out)
 emit:
-    gff_nested_filter.out
+    gff_score_filter.out
 }
 
 workflow hmmer_by_pfam {
@@ -435,7 +470,8 @@ workflow hmmer_by_pfam {
   merge_gff(pfam_AB_run.out.collect())  
   generate_svg_colors(merge_gff.out)
   split_gff_by_seqid(merge_gff.out)
-  gff_w_color = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath('renaming.txt'))
+  dummy_publish_path(channel.fromPath('renaming.txt'))
+  gff_w_color = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(dummy_publish_path.out)
   DNA_features_viewer(gff_w_color)
 }
 
@@ -452,9 +488,13 @@ workflow {
     //PF08540 = HMG_CoA_synt_C
     //PF00195 = Chal_sti_synt_N
     //PF02797 = Chal_sti_synt_C
+
+    download_ipr2go()
+
     unfiltered = channel.fromPath(params.fasta)
     getTargets(["PF00550","PF14573","PF00109","PF02801","PF16197","PF00108","PF02803","PF01154","PF08540","PF00195","PF02797"],unfiltered)
     data = getTargets.out
+    //data = unfiltered
 
     fasta_remove_asterisk(data)
     fastaChunks = fasta_remove_asterisk.out.splitFasta(by:5,file:true)
@@ -478,14 +518,19 @@ workflow {
     //gt_sketch_svg(stripped_gffs.combine(gt_style))
     //merge_fasta(collected_ipr_fa)
     merge_gff(collected_gffs)
- 
-    generate_svg_colors(merge_gff.out)
-    split_gff_by_seqid(merge_gff.out)
-    gff_w_color = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath('renaming.txt'))
-    DNA_features_viewer(gff_w_color)
+
+    gff_nested_filter(merge_gff.out)
+
+    //Try to filter down to the most informative... 
+    ipr_shorten_gff(gff_nested_filter.out) | generate_svg_colors & split_gff_by_seqid
+
+    gff_w_color_renaming = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath('renaming.txt'))
     
+    DNA_features_viewer(gff_w_color_renaming)
+    
+    gt_extractfeat(merge_gff.out,data,"protein_match")
 
     svg_utils_merge(DNA_features_viewer.out.collect())
     svg_2_pdf(DNA_features_viewer.out)
-    //gt_extractfeat(merge_gff.out,data,"protein_match")
+    //extract_non_annotated(merge_gff.out,unfiltered,'90')
 }
