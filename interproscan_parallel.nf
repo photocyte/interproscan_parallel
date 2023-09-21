@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 
 include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic } from '/home/tfallon/databases/pfam/pfam.nf'
-include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; split_gff_by_seqid ; DNA_features_viewer } from '/home/tfallon/source/nextflow/dna_features_viewer/dna_features_viewer.nf'
+include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; svg_resize_page ; split_gff_by_seqid ; DNA_features_viewer ; pdf_2_PDF_A_1B } from '/home/tfallon/source/nextflow/dna_features_viewer/dna_features_viewer.nf'
 include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/utility/utility.nf'
 
 process download_ipr2go {
@@ -11,16 +11,45 @@ output:
  path "interpro2go.txt"
 shell:
 '''
-wget http://www.geneontology.org/external2go/interpro2go -O interpro2go.txt
+wget --no-check-certificate http://www.geneontology.org/external2go/interpro2go -O interpro2go.txt
+'''
+}
+
+process download_interproscan_docker_data {
+storeDir "dependencies/download_interproscan_docker_data"
+output:
+ path "interproscan-*/data"
+shell:
+'''
+VERSION='5.64-96.0'
+wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz
+wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz.md5
+md5sum -c interproscan-data-${VERSION}.tar.gz.md5
+tar -pxzf interproscan-data-${VERSION}.tar.gz
+
+## Supplied by the Docker image.
+## It might be necesarry to execute it from the interproscan-* directory though...
+ln -s /opt/interproscan/interproscan.properties interproscan-*/
+ln -s /opt/interproscan/setup.py interproscan-*/
+ln -s /opt/interproscan/bin interproscan-*/
+
+cd interproscan-*/
+python3 setup.py -f interproscan.properties
+cd ../
+
+##Clean up symlinks & tar.gz file
+rm -f interproscan-*/interproscan.properties
+rm -f interproscan-*/setup.py
+rm -f interproscan-*/bin
+rm -f interproscan-data-${VERSION}.tar.gz
 '''
 }
 
 process interproscan_run {
     publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
-    //storeDir "results/interproscan_run"
     cpus 1
     //scratch true
-    scratch 'ram-disk'
+    //scratch 'ram-disk' // Can't use this, plus nextflow.config singularity.runOptions -B mounting at the same time.
     //stageInMode 'copy'
     errorStrategy 'finish'
     maxRetries 3
@@ -29,8 +58,9 @@ process interproscan_run {
     time '24h'
     maxForks 10
     cache "deep"
+    debug true //Print stdout to the terminal
     input:
-     path inputFasta
+     path inputFasta // Might consider linking in the nextflow.config singularity.runOptions -B 'data' directory via a Channel instead.
     output:
      path "*.gff3", emit: gffs
      path "*.json", emit: jsons
@@ -39,10 +69,16 @@ process interproscan_run {
      path "*.xml", emit: xmls
     shell:
       '''
+      ##Old way, using the manually installed interproscan 
+      ##/home/tfallon/software/interproscan-5.63-95.0/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
+
       ##Removed MobiDBLite, as it had been crashing
       ##CDD was also crashing with a rpsbproc dependency issue
-      APPLS="COILS,Gene3D,HAMAP,PANTHER,Pfam,PIRSF,PRINTS,PROSITEPATTERNS,PROSITEPROFILES,SFLD,SMART,SUPERFAMILY,TIGRFAM"
-      /home/tfallon/software/interproscan-5.60-92.0/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
+      ##APPLS="COILS,Gene3D,HAMAP,PANTHER,Pfam,PIRSF,PRINTS,PROSITEPATTERNS,PROSITEPROFILES,SFLD,SMART,SUPERFAMILY,TIGRFAM"
+      ##Will try running with all tools, since it is now the Docker container. Readd this parameter if wanting to disable again: '-appl ${APPLS}' 
+
+      ## New way, using a Singularity/Apptainer execution off the official interproscan Docker container
+      /opt/interproscan/interproscan.sh --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
       '''
 }
 
@@ -93,13 +129,17 @@ fi
 
 ##Note: Below ID renaming only works for if it is 1 FASTA target per GFF
 SEQID=`cat !{gff} | grep -v "##" | head -n 1 | cut -f 1` 
-TARGETS="##|Gene3D|polypeptide|SUPERFAMILY"
-head -n +`grep -n "##FASTA" !{gff} | cut -d : -f 1` !{gff} | grep -v "##FASTA" | grep -P ${TARGETS} > results/ipr.!{gff}
+##TARGETS="##|Gene3D|polypeptide|SUPERFAMILY"
+
+##In the past, this process also did filtering. with | grep -P ${TARGETS} > results/ipr.!{gff}
+
+head -n +`grep -n "##FASTA" !{gff} | cut -d : -f 1` !{gff} | grep -v "##FASTA" > results/ipr.!{gff}
 tail -n +`grep -n "##FASTA" !{gff} | cut -d : -f 1` !{gff} | grep -v "##FASTA" > results/ipr.!{gff}.fasta
 '''
 }
 
-process gff_rename_ipr {
+process gff_append_name_to_seqid_ipr {
+publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
 cpus 1
 input:
  path gff
@@ -111,7 +151,7 @@ shell:
 import re
 import os
 os.mkdir('results')
-targets = ["Gene3D","SUPERFAMILY"]
+targets = ["Gene3D","SUPERFAMILY"] ## Where the rename targets are set. Others are left untouched.
 r_handle = open('!{gff}')
 w_handle = open('results/!{gff}','w')
 for l in r_handle.readlines():
@@ -132,6 +172,7 @@ r_handle.close()
 w_handle.close()
 '''
 }
+
 
 process hmmersearch2gff {
 input:
@@ -186,6 +227,25 @@ cat !{inputGff} | bioawk -c gff '$score < !{scoreToFilterBy}{ print $0 }' | gt g
 '''
 }
 
+
+process gff_collapse_90perc_overlap {
+input:
+ path inputGff
+ val scoreToFilterBy //e.g. 1E-3
+output:
+ path "filtered/${inputGff}"
+conda 'bioawk genometools-genometools'
+shell:
+'''
+#!/usr/bin/env python
+##Pseudo code
+##1. Load all features
+##2. Find features that overlap. Feat1_Start >= Feat2_end  
+##3. 
+'''
+}
+
+
 process mgkit_hmmer2gff {
 //conda "mgkit" //Will use docker instead... Conda too slow
 //Turns out the Singularity container of the docker fails with an error.
@@ -207,15 +267,17 @@ conda 'bedops'
 input:
  path inputGff
 output:
- path "filtered/${inputGff}"
+ path "filtered/${inputGff}", emit: remaining_gffs
+ path "nested.gff", emit: removed_gffs
 shell:
 '''
-##See here for this trick
+##See here for further definition of nested.
 ## https://www.biostars.org/p/272676/
 ## https://bedops.readthedocs.io/en/latest/content/reference/set-operations/nested-elements.html
+
+## Note the GFF likely has to be sorted beforehand. 
+
 mkdir filtered
-cat !{inputGff} | awk -v "FS=\t" -v "OFS=\t" '{print $1,$2,$3,$5}' > !{inputGff}.bed
-#convert2bed --input=gff !{inputGff} > !{inputGff}.bed
 
 ##Basically a reimplmentation of the awk script
 ##But, had to modify it so it not just "previous feature", but all previous features where prev_end >= cur_start
@@ -226,14 +288,19 @@ prev_features = dict()
 
 SKIP_TYPES=['polypeptide']
 
+nested_by_accept_filter = {'G3DSA:3.40.50.720':'G3DSA:3.90.180.10'}
+
 for l in r_handle.readlines():
     if l[0] == '#':
         continue
     sl = l.split('\t')
+    cur_seqid = sl[0]
+    cur_type = sl[2].strip()
     cur_start = int(sl[3])
     cur_end = int(sl[4])
-    cur_type = sl[2].strip()
-    
+    cur_attr = sl[8].split(';') ## 9th column    
+    cur_attr = {x.split('=')[0]:x.split('=')[1] for x in cur_attr}
+
     if cur_type in SKIP_TYPES:
         print('Skipping',sl)
         continue
@@ -249,25 +316,20 @@ for l in r_handle.readlines():
     for f in prev_features:
         if (prev_features[f]['start'] <= cur_start) and (prev_features[f]['end'] >= cur_end):
             ##Fully overlapped (nested), left nested, right nested, or fully coincident with 'some feature'
-            w_handle.write(l) ##Mark for future filtering
-            break
+            if cur_attr['Name'] not in nested_by_accept_filter.keys():
+                continue
+            if nested_by_accept_filter[cur_attr['Name']] == prev_features[f]['attr']['Name']:
+                ##Only handle specific enumerated nestings, rather than all possible nestings
+                w_handle.write(l) ##Mark for future filtering
+                break
 
-    prev_features[l] = {'start':cur_start,'end':cur_end}
+    prev_features[l] = {'seqid':cur_seqid,'start':cur_start,'end':cur_end,'attr':cur_attr}
 r_handle.close()
 w_handle.close()
 "
 
-##Old way
-#cat nested.bed | bedops --not-element-of 100% !{inputGff}.bed - > !{inputGff}.fil.bed
-#grep -f <(cut -f 4 !{inputGff}.fil.bed) !{inputGff} | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
-
-##This also seemed to not work quite right.
-##bedtools subtract -A -f 1.0 -r -a !{inputGff} -b nested.bed | gt gff3 -tidy -sort -retainids > filtered/!{inputGff}
-
-
+##Remove the nested features.
 grep -v -f <(cut -f 1,2,3,4,5 nested.gff) !{inputGff} | grep -vP "^###$" > filtered/!{inputGff}
-
-#grep -v -f nested.gff !{inputGff} > filtered/!{inputGff}
 
 '''
 
@@ -338,7 +400,8 @@ process ipr_svg {
      path "*.svg"
     shell:
       '''
-      /oasis/tscc/scratch/tfallon/software/interproscan-5.51-85.0/interproscan.sh -mode convert -d ./ -i !{xml} -f svg
+      ##Note: SVG output from interproscan is deprecated, and no longer mentioned in the documentation
+      /oasis/tscc/scratch/tfallon/software/interproscan-5.63-95.0/interproscan.sh -mode convert -d ./ -i !{xml} -f svg
       tar xzf *.tar.gz
       '''
 }
@@ -475,6 +538,10 @@ workflow hmmer_by_pfam {
   DNA_features_viewer(gff_w_color)
 }
 
+workflow download_data {
+ download_interproscan_docker_data()
+}
+
 workflow {
     //FASTA should be peptides, ideally already filtered down to those with hits.
     //PF00550 = "PP-binding", ACP overlapping
@@ -492,20 +559,20 @@ workflow {
     download_ipr2go()
 
     unfiltered = channel.fromPath(params.fasta)
-    getTargets(["PF00550","PF14573","PF00109","PF02801","PF16197","PF00108","PF02803","PF01154","PF08540","PF00195","PF02797"],unfiltered)
-    data = getTargets.out
-    //data = unfiltered
+    //getTargets(["PF00550","PF14573","PF00109","PF02801","PF16197","PF00108","PF02803","PF01154","PF08540","PF00195","PF02797"],unfiltered)
+    //data = getTargets.out //If running on an unfiltered dataset, this uses PFAM searches to filter out candidates
+    data = unfiltered
 
     fasta_remove_asterisk(data)
     fastaChunks = fasta_remove_asterisk.out.splitFasta(by:5,file:true)
-    pfam_AB_run(fastaChunks)
+    //pfam_AB_run(fastaChunks) // Not necesarry for pure interproscan annotation
     interproscan_run(fastaChunks)
 
     //mgkit_hmmer2gff(pfam_run.out)    
 
     gff_strip_fasta(interproscan_run.out.gffs)
-    gff_rename_ipr(gff_strip_fasta.out.gffs)
-    stripped_gffs = gff_rename_ipr.out.mix(pfam_AB_run.out)
+    gff_append_name_to_seqid_ipr(gff_strip_fasta.out.gffs)
+    stripped_gffs = gff_append_name_to_seqid_ipr.out // .mix(pfam_AB_run.out) // Uncomment if wanting to include pfam search results in things.
     collected_gffs = stripped_gffs.collect()
     collected_ipr_fa = gff_strip_fasta.out.fastas.collect()
 
@@ -513,24 +580,33 @@ workflow {
     tsv_results = interproscan_run.out.tsvs.collectFile()
     sites_results = interproscan_run.out.sites.collectFile()
 
-    //ipr_svg(interproscan_run.out.xmls)
-    gt_style = channel.fromPath('ipr.style')
+    //ipr_svg(interproscan_run.out.xmls) // Deprecated, InterProScan no longer supports SVG generation.
+    //gt_style = channel.fromPath('ipr.style')
     //gt_sketch_svg(stripped_gffs.combine(gt_style))
     //merge_fasta(collected_ipr_fa)
+    
     merge_gff(collected_gffs)
 
-    gff_nested_filter(merge_gff.out)
+    ipr_shorten_gff(merge_gff.out)
 
-    //Try to filter down to the most informative... 
-    ipr_shorten_gff(gff_nested_filter.out) | generate_svg_colors & split_gff_by_seqid
+    
+    //TODO, evaluate if this gff_nester_filter is actually operating properly. It probably makes at least the sorting assumption 
+    gff_nested_filter(ipr_shorten_gff.out)
 
-    gff_w_color_renaming = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath('renaming.txt'))
+    generate_svg_colors(gff_nested_filter.out.remaining_gffs)
+    split_gff_by_seqid(gff_nested_filter.out.remaining_gffs)
+
+    gff_w_color_renaming = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath(params.renaming))
     
     DNA_features_viewer(gff_w_color_renaming)
     
     gt_extractfeat(merge_gff.out,data,"protein_match")
 
     svg_utils_merge(DNA_features_viewer.out.collect())
-    svg_2_pdf(DNA_features_viewer.out)
+    
+    svg_resize_page(DNA_features_viewer.out)
+    svg_2_pdf(svg_resize_page.out)
+
+    pdf_2_PDF_A_1B(svg_2_pdf.out)
     //extract_non_annotated(merge_gff.out,unfiltered,'90')
 }
