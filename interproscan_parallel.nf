@@ -228,24 +228,6 @@ cat !{inputGff} | bioawk -c gff '$score < !{scoreToFilterBy}{ print $0 }' | gt g
 }
 
 
-process gff_collapse_90perc_overlap {
-input:
- path inputGff
- val scoreToFilterBy //e.g. 1E-3
-output:
- path "filtered/${inputGff}"
-conda 'bioawk genometools-genometools'
-shell:
-'''
-#!/usr/bin/env python
-##Pseudo code
-##1. Load all features
-##2. Find features that overlap. Feat1_Start >= Feat2_end  
-##3. 
-'''
-}
-
-
 process mgkit_hmmer2gff {
 //conda "mgkit" //Will use docker instead... Conda too slow
 //Turns out the Singularity container of the docker fails with an error.
