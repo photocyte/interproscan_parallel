@@ -27,14 +27,13 @@ wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interprosc
 md5sum -c interproscan-data-${VERSION}.tar.gz.md5
 tar -pxzf interproscan-data-${VERSION}.tar.gz
 
-## Supplied by the Docker image.
-## It might be necesarry to execute it from the interproscan-* directory though...
+## Files & executables are supplied by the Docker image.
 ln -s /opt/interproscan/interproscan.properties interproscan-*/
 ln -s /opt/interproscan/setup.py interproscan-*/
 ln -s /opt/interproscan/bin interproscan-*/
 
 cd interproscan-*/
-python3 setup.py -f interproscan.properties
+python3 setup.py -f interproscan.properties ## This does hmmpress, and some other things. Not mentioned in the InterProScan Docker image documentation, but I think it's important.
 cd ../
 
 ##Clean up symlinks & tar.gz file
@@ -270,7 +269,7 @@ prev_features = dict()
 
 SKIP_TYPES=['polypeptide']
 
-nested_by_accept_filter = {'G3DSA:3.40.50.720':'G3DSA:3.90.180.10'}
+nested_by_accept_filter = {'G3DSA:3.40.50.720':'G3DSA:3.90.180.10'} ## Implemented as a heuristic, where only the keys are eligible for nested filtering, since not all nested annotations are so well behaved as these.
 
 for l in r_handle.readlines():
     if l[0] == '#':
@@ -510,7 +509,7 @@ emit:
 
 workflow hmmer_by_pfam {
   fasta = channel.fromPath(params.fasta)
-  fastaChunks = fasta.splitFasta(by:10,file:true)
+  fastaChunks = fasta.splitFasta(by:700,file:true)
   pfam_AB_run(fastaChunks)
   merge_gff(pfam_AB_run.out.collect())  
   generate_svg_colors(merge_gff.out)
@@ -524,8 +523,9 @@ workflow download_data {
  download_interproscan_docker_data()
 }
 
-workflow {
+workflow scan_and_plot {
     //FASTA should be peptides, ideally already filtered down to those with hits.
+    //See the getTargets subworkflow, to automate target searching and selection
     //PF00550 = "PP-binding", ACP overlapping
     //PF14573 = "PP-binding_2", ACP overlapping
     //PF00109 = ketpacyl-synt, KS overlapping
@@ -538,15 +538,15 @@ workflow {
     //PF00195 = Chal_sti_synt_N
     //PF02797 = Chal_sti_synt_C
 
-    download_ipr2go()
+    //download_ipr2go() //Vestigial
 
     unfiltered = channel.fromPath(params.fasta)
     //getTargets(["PF00550","PF14573","PF00109","PF02801","PF16197","PF00108","PF02803","PF01154","PF08540","PF00195","PF02797"],unfiltered)
-    //data = getTargets.out //If running on an unfiltered dataset, this uses PFAM searches to filter out candidates
+    //data = getTargets.out //If running on an unfiltered dataset, this uses HMMER3/PFAM searches to filter out candidates
     data = unfiltered
 
     fasta_remove_asterisk(data)
-    fastaChunks = fasta_remove_asterisk.out.splitFasta(by:5,file:true)
+    fastaChunks = fasta_remove_asterisk.out.splitFasta(by:700,file:true) 
     //pfam_AB_run(fastaChunks) // Not necesarry for pure interproscan annotation
     interproscan_run(fastaChunks)
 
@@ -591,4 +591,39 @@ workflow {
 
     pdf_2_PDF_A_1B(svg_2_pdf.out)
     //extract_non_annotated(merge_gff.out,unfiltered,'90')
+}
+
+workflow do_scan {
+    //For clarity, and in contrast to workflow 'scan_and_plot', this workflow only does the interproscan annotation, not the plotting
+    //It also doesn't have the commented lines to do a HMMER/PFAM target selection.
+    //Or otherwise use PFAM.
+    //A more elegant way would be to call do_scan from scan_and_plot, but this gets the job done
+
+    //download_ipr2go()  //Vestigial
+
+    unfiltered = channel.fromPath(params.fasta)
+    data = unfiltered
+
+    fasta_remove_asterisk(data)
+    fastaChunks = fasta_remove_asterisk.out.splitFasta(by:700,file:true) 
+    interproscan_run(fastaChunks)
+
+    gff_strip_fasta(interproscan_run.out.gffs)
+    gff_append_name_to_seqid_ipr(gff_strip_fasta.out.gffs)
+    stripped_gffs = gff_append_name_to_seqid_ipr.out
+    collected_gffs = stripped_gffs.collect()
+    collected_ipr_fa = gff_strip_fasta.out.fastas.collect()
+
+    collected_jsons = interproscan_run.out.jsons
+    tsv_results = interproscan_run.out.tsvs.collectFile()
+    sites_results = interproscan_run.out.sites.collectFile()
+
+    merge_gff(collected_gffs)
+
+    ipr_shorten_gff(merge_gff.out)
+    
+    gff_nested_filter(ipr_shorten_gff.out)
+
+    emit:
+       gff_nested_filter.out
 }
