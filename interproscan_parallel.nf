@@ -21,6 +21,8 @@ output:
  path "interproscan-*/data"
 shell:
 '''
+##Be sure to check the 'nextflow.config' for how to mount this 'data' directory into the ultimate interproscan_run process
+
 VERSION='5.64-96.0'
 wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz
 wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz.md5
@@ -150,23 +152,20 @@ shell:
 import re
 import os
 os.mkdir('results')
-targets = ["Gene3D","SUPERFAMILY"] ## Where the rename targets are set. Others are left untouched.
+##Below targets no longer used. It is assumed everything will be renamed.
+##Check git if wanting to revert the behavior
+##targets = ["Gene3D","SUPERFAMILY"] ## Where the rename targets are set. Others are left untouched.
+
 r_handle = open('!{gff}')
 w_handle = open('results/!{gff}','w')
 for l in r_handle.readlines():
     if l[0] == "#":
         w_handle.write(l)
         continue
-    NOMATCH = True
-    for t in targets:
-        if t in l:
-            NOMATCH = False
-            NAME = re.search("Name=([\\w:.]+)",l).group(1)
-            SEQID = l.split("\\t")[0]
-            new_l = re.sub('match\\$',SEQID+"_"+NAME+"_",l)
-            w_handle.write(new_l)
-    if NOMATCH == True:
-        w_handle.write(l)
+    NAME = re.search("Name=([\\w:.]+)",l).group(1)
+    SEQID = l.split("\\t")[0]
+    new_l = re.sub('match\\$',SEQID+"_"+NAME+"_",l)
+    w_handle.write(new_l)
 r_handle.close()
 w_handle.close()
 '''
