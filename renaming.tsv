@@ -1,0 +1,66 @@
+G3DSA:1.10.1200.10	ACP
+G3DSA:1.10.1470.20	Fatty acid synthase; domain 2
+G3DSA:1.25.40.20	Ankyrin repeat-containing domain
+G3DSA:1.25.40.960	DUF1
+G3DSA:2.30.29.30	Pleckstrin-homology domain
+G3DSA:2.30.38.10	Acyl CoA Synthetase
+G3DSA:3.10.129.10	Hotdog Thioesterase
+G3DSA:3.10.129.110	dehydratase
+G3DSA:3.10.129.120	DUF2
+G3DSA:3.20.20.70	Aldolase
+G3DSA:3.30.300.30	Acyl CoA Synthetase
+G3DSA:3.30.559.10	acetyltransferase-like
+G3DSA:3.30.559.30	NRPS, condensation domain
+G3DSA:3.30.70.250	Malonyl-CoA ACP transacylase, ACP-binding	
+G3DSA:3.30.70.3290	MalF-like	
+G3DSA:3.30.70.420	Hydroxymethylglutaryl-CoA reductase	
+G3DSA:3.40.250.10	Rhodanese-like domain	
+G3DSA:3.40.30.10	Glutaredoxin	
+G3DSA:3.40.366.10	Malonyl-Coenzyme A Acyl Carrier Protein, domain 2	
+G3DSA:3.40.47.10	Thiolase/Polyketide synthase	
+G3DSA:3.40.50.1220	TPP-binding domain	
+G3DSA:3.40.50.12780	Acyl CoA synthetase
+G3DSA:3.40.50.150	Vaccinia Virus protein VP39
+G3DSA:3.40.50.1820	Alpha/Beta hydrolase fold
+G3DSA:3.40.50.300	P-loop containing nucleotide triphosphate hydrolases
+G3DSA:3.40.50.720	G3DSA_NAD(P)-binding Rossmann-like Domain
+G3DSA:3.40.50.970	Thiamin diphosphate (ThDP)-binding fold
+G3DSA:3.40.630.30	Gcn5-related N-acetyltransferase
+G3DSA:3.40.640.10	Type I PLP-dependent aspartate aminotransferase-like
+G3DSA:3.50.50.60	CanHal_G3DSA
+G3DSA:3.90.1150.10	Aspartate Aminotransferase
+G3DSA:3.90.180.10	Medium-chain alcohol dehydrogenases
+G3DSA:3.90.226.10	2-enoyl-CoA Hydratase
+G3DSA:3.90.550.10	glycosyltransferase?
+G3DSA:3.90.770.10	3-hydroxy-3-methylglutaryl-coenzyme A Reductase
+SSF47336	ACP
+SSF48403	Ankyrin repeat
+SSF48452	TPR-like
+SSF50129	GroES-like
+SSF50729	PH domain-like
+SSF51161	Trimeric LpxA-like enzymes
+SSF51197	Clavaminate synthase-like superfamily
+SSF51412	Inosine monophosphate dehydrogenase (IMPDH)
+SSF51735	SSF_NAD(P)-binding Rossmann-fold domains
+SSF51905	CanHal_SSF
+SSF52096	ClpP/crotonase
+SSF52151	FabD/lysophospholipase-like
+SSF52467	DHS-like NAD/FAD-binding domain
+SSF52518	Thiamin diphosphate-binding fold (THDP-binding)
+SSF52540	P-loop containing nucleoside triphosphate hydrolases
+SSF52777	CoA-dependent acyltransferases
+SSF52821	Rhodanese/Cell cycle control phosphatase
+SSF52833	Thioredoxin-like
+SSF53335	SAM-dependent methyltransferases
+SSF53383	PLP-dependent transferases
+SSF53448	Nucleotide-diphospho-sugar transferases
+SSF53474	alpha/beta-Hydrolases
+SSF53901	Thiolase-like
+SSF54637	Thioesterase/thiol ester dehydrase-isomerase
+SSF55035	NAD-binding domain of HMG-CoA reductase
+SSF55048	Probable ACP-binding domain of malonyl-CoA ACP transacylase
+SSF55729	Acyl-CoA N-acyltransferases
+SSF56112	Protein kinase-like
+SSF56542	Substrate-binding domain of HMG-CoA reductase
+SSF56801	Acetyl-CoA synthetase-like	
+SSF82215	C-terminal autoproteolytic domain of nucleoporin nup98
