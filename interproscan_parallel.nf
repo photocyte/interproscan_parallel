@@ -162,9 +162,14 @@ for l in r_handle.readlines():
     if l[0] == "#":
         w_handle.write(l)
         continue
-    NAME = re.search("Name=([\\w:.]+)",l).group(1)
+    NAME_MATCH = re.search("Name=([\\w:.]+)",l)
+    if NAME_MATCH != None:
+        NAME=NAME_MATCH.group(1)
+    else:
+        w_handle.write(l)
+        continue
     SEQID = l.split("\\t")[0]
-    new_l = re.sub('match\\$',SEQID+"_"+NAME+"_",l)
+    new_l = re.sub('match\\$[0-9]+_',SEQID+"__"+NAME+"_",l) ## Unclear what the numbers after match$ mean, so will delete.
     w_handle.write(new_l)
 r_handle.close()
 w_handle.close()
@@ -522,7 +527,7 @@ workflow download_data {
  download_interproscan_docker_data()
 }
 
-workflow scan_and_plot {
+workflow {
     //FASTA should be peptides, ideally already filtered down to those with hits.
     //See the getTargets subworkflow, to automate target searching and selection
     //PF00550 = "PP-binding", ACP overlapping
@@ -581,7 +586,7 @@ workflow scan_and_plot {
     
     DNA_features_viewer(gff_w_color_renaming)
     
-    gt_extractfeat(merge_gff.out,data,"protein_match")
+    gt_extractfeat(gff_nested_filter.out.remaining_gffs,data,"protein_match")
 
     svg_utils_merge(DNA_features_viewer.out.collect())
     
@@ -592,11 +597,14 @@ workflow scan_and_plot {
     //extract_non_annotated(merge_gff.out,unfiltered,'90')
 }
 
-workflow do_scan {
+workflow do_simple_nonparallel_scan {
     //For clarity, and in contrast to workflow 'scan_and_plot', this workflow only does the interproscan annotation, not the plotting
     //It also doesn't have the commented lines to do a HMMER/PFAM target selection.
     //Or otherwise use PFAM.
     //A more elegant way would be to call do_scan from scan_and_plot, but this gets the job done
+
+    //Update: I'm not totally confident that the parallelization is working right. It seems broken when attempted, with GFF ID= or Name= collisions happening. 
+    //So, will rename this, and rerun it.
 
     //download_ipr2go()  //Vestigial
 
@@ -604,8 +612,8 @@ workflow do_scan {
     data = unfiltered
 
     fasta_remove_asterisk(data)
-    fastaChunks = fasta_remove_asterisk.out.splitFasta(by:700,file:true) 
-    interproscan_run(fastaChunks)
+    //fastaChunks = fasta_remove_asterisk.out.splitFasta(by:700,file:true) 
+    interproscan_run(fasta_remove_asterisk.out)
 
     gff_strip_fasta(interproscan_run.out.gffs)
     gff_append_name_to_seqid_ipr(gff_strip_fasta.out.gffs)
@@ -624,5 +632,5 @@ workflow do_scan {
     gff_nested_filter(ipr_shorten_gff.out)
 
     emit:
-       gff_nested_filter.out
+       gff_nested_filter.out.remaining_gffs
 }
