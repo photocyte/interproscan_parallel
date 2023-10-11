@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 
 include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic } from '/home/tfallon/source/nextflow/pfam_nf/pfam.nf'
 include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; svg_resize_page ; split_gff_by_seqid ; DNA_features_viewer ; pdf_2_PDF_A_1B } from '/home/tfallon/source/nextflow/dna_features_viewer/dna_features_viewer.nf'
-include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/utility/utility.nf'
+include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/nf_utility/nf_utility.nf'
 
 process download_ipr2go {
 storeDir "results/${task.process}"
