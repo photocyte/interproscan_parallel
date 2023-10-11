@@ -23,3 +23,9 @@ See `datasets/renaming.tsv` for how to structure this 2-column TSV. It allows ta
 ### Known issues
 Despite the name, the parallelization is currently disabled though the vestigial code is mostly there and could be re-enabled if desired. The problem is, when InterProScan is run as a naive parallelization, the resulting GFF3 files are not mergable without breaking the specification (ID and/or Name attribute collisions). This renaming to avoid collisions and allow merging is partially implemented.  
 
+### Citing
+
+Releases & Zenodo archiving have been enabled on this repo:
+[![DOI](https://zenodo.org/badge/685739751.svg)](https://zenodo.org/badge/latestdoi/685739751)
+
+
