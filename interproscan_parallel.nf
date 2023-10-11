@@ -1,9 +1,14 @@
 // Also, see here https://lipm-gitlab.toulouse.inra.fr/LIPM-BIOINFO/nextflow-interproscan5/blob/master/interproscan.nf
 nextflow.enable.dsl=2
 
-include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic } from '/home/tfallon/source/nextflow/pfam_nf/pfam.nf'
-include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; svg_resize_page ; split_gff_by_seqid ; DNA_features_viewer ; pdf_2_PDF_A_1B } from '/home/tfallon/source/nextflow/dna_features_viewer/dna_features_viewer.nf'
-include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/nf_utility/nf_utility.nf'
+//This isn't the most elegant way to split up the modules.
+//It's currently not possible in Nextflow (https://github.com/nextflow-io/nextflow/discussions/4254), and may not ever be implemented (https://github.com/nextflow-io/nextflow/issues/4112)
+include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; svg_resize_page ; split_gff_by_seqid ; DNA_features_viewer ; pdf_2_PDF_A_1B } from './modules/dna_features_viewer/dna_features_viewer.nf'
+
+//Seeing as the unnamed main workflow, and do_simple_nonparallel_scan, currently do not call these processes, commenting them out. 
+//In short, this was a fairly complicated way to to target selection, within the script. The alternative (and what I'm doing now) is to use some simple grepping outside the script
+//include { detab ; debar ; decolon ; dummy_publish_path } from '/home/tfallon/source/nextflow/nf_utility/nf_utility.nf'
+//include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic ; hmm_subset } from '/home/tfallon/source/nextflow/pfam_nf/pfam.nf'
 
 process download_ipr2go {
 storeDir "results/${task.process}"
