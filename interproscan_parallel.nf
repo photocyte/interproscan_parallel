@@ -167,7 +167,7 @@ for l in r_handle.readlines():
     if l[0] == "#":
         w_handle.write(l)
         continue
-    NAME_MATCH = re.search("Name=([\\w:.]+)",l)
+    NAME_MATCH = re.search("Name=([^;$]+)",l)
     if NAME_MATCH != None:
         NAME=NAME_MATCH.group(1)
     else:
