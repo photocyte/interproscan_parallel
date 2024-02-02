@@ -6,9 +6,9 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("gff")
 args = parser.parse_args()
-print(args.echo)
 
-os.mkdir('results')
+if not os.path.exists('results'):
+    os.mkdir('results')
 
 ##Below targets no longer used. It is assumed everything will be renamed.
 ##Check git if wanting to revert the behavior
