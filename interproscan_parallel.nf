@@ -153,31 +153,7 @@ output:
  path "results/${gff}"
 shell:
 '''
-#!/usr/bin/env python
-import re
-import os
-os.mkdir('results')
-##Below targets no longer used. It is assumed everything will be renamed.
-##Check git if wanting to revert the behavior
-##targets = ["Gene3D","SUPERFAMILY"] ## Where the rename targets are set. Others are left untouched.
-
-r_handle = open('!{gff}')
-w_handle = open('results/!{gff}','w')
-for l in r_handle.readlines():
-    if l[0] == "#":
-        w_handle.write(l)
-        continue
-    NAME_MATCH = re.search("Name=([^;$]+)",l)
-    if NAME_MATCH != None:
-        NAME=NAME_MATCH.group(1)
-    else:
-        w_handle.write(l)
-        continue
-    SEQID = l.split("\\t")[0]
-    new_l = re.sub('match\\$[0-9]+_',SEQID+"__"+NAME+"_",l) ## Unclear what the numbers after match$ mean, so will delete.
-    w_handle.write(new_l)
-r_handle.close()
-w_handle.close()
+gff_append_name_to_seqid_ipr.py !{gff}
 '''
 }
 
