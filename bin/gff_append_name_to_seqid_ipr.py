@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import re
 import os
+import os.path
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -15,7 +16,7 @@ if not os.path.exists('results'):
 ##targets = ["Gene3D","SUPERFAMILY"] ## Where the rename targets are set. Others are left untouched.
 
 r_handle = open(args.gff)
-w_handle = open(f'results/{args.gff}','w')
+w_handle = open(f'results/{os.path.basename(args.gff)}','w')
 for l in r_handle.readlines():
     if l[0] == "#":
         w_handle.write(l)
