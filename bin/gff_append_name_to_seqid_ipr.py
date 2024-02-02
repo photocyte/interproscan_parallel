@@ -27,7 +27,7 @@ for l in r_handle.readlines():
     else:
         w_handle.write(l)
         continue
-    SEQID = l.split("\\t")[0]
+    SEQID = l.split("\t")[0]
     new_l = re.sub('match\\$[0-9]+_',SEQID+"__"+NAME+"_",l) ## Unclear what the numbers after match$ mean, so will delete.
     w_handle.write(new_l)
 r_handle.close()
