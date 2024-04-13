@@ -326,6 +326,7 @@ class IPSCustomTranslator(BiopythonTranslator):
             return BiopythonTranslator.compute_feature_label(self, feature)
 
 graphic_record = IPSCustomTranslator().translate_record("!{gff}")
+print(f'graphic_record.sequence:{graphic_record.sequence}')
 print(dir(graphic_record))
 ax, _ = graphic_record.plot(figure_width=len(graphic_record.sequence)/100.0, strand_in_label_threshold=7)
 ##ax.figure.savefig(pep_name+'.dfv.svg', bbox_inches='tight') # SAVE AS SVG
