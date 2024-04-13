@@ -281,7 +281,7 @@ for l in r_handle.readlines():
     if len(split_l) > 2 and (split_l[2] in accepted_types or accept_all):
         pep_name = split_l[0]
     if split_l[2] == "polypeptide":
-        seq_len = split_l[4] - split_l[3]
+        seq_len = int(split_l[4]) - int(split_l[3])
 r_handle.close()
 
 ##If the pep_name wasn't able to be set from the gff lines, just use the filename
