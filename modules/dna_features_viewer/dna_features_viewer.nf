@@ -280,6 +280,8 @@ for l in r_handle.readlines():
         continue
     if len(split_l) > 2 and (split_l[2] in accepted_types or accept_all):
         pep_name = split_l[0]
+    if split_l[2] == "polypeptide":
+        seq_len = split_l[4] - split_l[3]
 r_handle.close()
 
 ##If the pep_name wasn't able to be set from the gff lines, just use the filename
@@ -327,8 +329,12 @@ class IPSCustomTranslator(BiopythonTranslator):
 
 graphic_record = IPSCustomTranslator().translate_record("!{gff}")
 print(f'graphic_record.sequence:{graphic_record.sequence}')
+if graphic_record.sequence == None:
+    plot_len = seq_len/100.0
+else:
+    plot_len = len(graphic_record.sequence)/100.0
 print(dir(graphic_record))
-ax, _ = graphic_record.plot(figure_width=len(graphic_record.sequence)/100.0, strand_in_label_threshold=7)
+ax, _ = graphic_record.plot(figure_width=plot_len, strand_in_label_threshold=7)
 ##ax.figure.savefig(pep_name+'.dfv.svg', bbox_inches='tight') # SAVE AS SVG
 ax.figure.savefig('!{gff}.dfv.svg', bbox_inches='tight', transparent=True) # SAVE AS SVG
 '''
