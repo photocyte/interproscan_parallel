@@ -7,7 +7,7 @@ NF_SCR="https://github.com/photocyte/interproscan_parallel"
 ## Downloading the accessory data for Docker/Singularity execution of InterProScan
 ## This ends up in the dependencies/download_interproscan_docker_data/ folder.
 ## You might have to modify the download_interproscan_docker_data process, and the nextflow.config singularity.runOptions to get it to work.
-##mkdir dependencies/download_interproscan_docker_data/interproscan-5.64-96.0/data
+##mkdir -p dependencies/download_interproscan_docker_data/interproscan-5.70-102.0/data
 #nextflow run ${NF_SCR} -latest -resume -entry download_data ## Used to download the interproscan docker data thingy
 
 ## Running the InterProScan annotation and graphical plotting for the peptide FASTA of the 3 PKZILLAs:

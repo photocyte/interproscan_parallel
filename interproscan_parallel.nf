@@ -28,7 +28,7 @@ shell:
 '''
 ##Be sure to check the 'nextflow.config' for how to mount this 'data' directory into the ultimate interproscan_run process
 
-VERSION='5.64-96.0'
+VERSION='5.70-102.0' ##formerly 5.64-96.0
 wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz
 wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interproscan-data-${VERSION}.tar.gz.md5
 md5sum -c interproscan-data-${VERSION}.tar.gz.md5
