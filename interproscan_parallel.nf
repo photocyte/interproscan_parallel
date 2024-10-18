@@ -229,7 +229,7 @@ python ../../../pfam2gff.py -i !{hmmsearch_tbl} -e 1e-3 > !{hmmsearch_tbl}.gff
 
 process gff_nested_filter {
 publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
-conda 'bedops'
+conda 'bedops biopython'
 input:
  path inputGff
 output:
