@@ -334,6 +334,7 @@ class IPSCustomTranslator(BiopythonTranslator):
 
 graphic_record = IPSCustomTranslator().translate_record("!{gff}")
 print(f'graphic_record.sequence:{graphic_record.sequence}')
+print(f'graphic_record length:{len(graphic_record)}')
 if graphic_record.sequence == None and seq_len != -1:
     plot_len = seq_len/100.0
 elif graphic_record.sequence == None and seq_len == -1:
