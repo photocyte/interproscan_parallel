@@ -338,7 +338,7 @@ print(f'graphic_record length:{len(graphic_record.features)}')
 if graphic_record.sequence == None and seq_len != -1:
     plot_len = seq_len/100.0
 elif graphic_record.sequence == None and seq_len == -1:
-    plot_len = 45 ## Arbitrary-ish, or should plot nicely at least. 
+    plot_len = len(graphic_record.features)*1.0 ## Arbitrary-ish, or should plot nicely at least. New addition to plotting logic since giant polyketide paper 
 else:
     plot_len = len(graphic_record.sequence)/100.0
 print(dir(graphic_record))
