@@ -162,6 +162,7 @@ cat !{input_gff} | awk -v "FS=\t" -v "OFS=\t" '{print $1,$2,$3,int(($4+$5)/2-30)
 
 process equally_distribute_gff_features {
 publishDir "results/${task.process}", mode: 'link',overwrite:'true'
+conda 'numpy'
 input:
  path input_gff
 output:
