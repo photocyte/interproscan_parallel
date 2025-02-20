@@ -337,7 +337,7 @@ print(f'graphic_record.sequence:{graphic_record.sequence}')
 if graphic_record.sequence == None and seq_len != -1:
     plot_len = seq_len/100.0
 elif graphic_record.sequence == None and seq_len == -1:
-    plot_len = 450 ## Arbitrary-ish, or should plot nicely at least. 
+    plot_len = 45 ## Arbitrary-ish, or should plot nicely at least. 
 else:
     plot_len = len(graphic_record.sequence)/100.0
 print(dir(graphic_record))
