@@ -272,6 +272,7 @@ global accepted_sources
 accepted_sources = ["GENE3D","SUPERFAMILY","PFAM","PROSITEPATTERNS","PROSITEPROFILES","PIRSR","CDD","SMART"] ## Only used for naming of the domains. They should all graphically be there!
 global accepted_types
 accepted_types = ["protein_match","hmmsearch"] ## Only used for coloration of the domains. They should all be there!
+seq_len = -1
 
 ##This just sets the pep_name from the seqid in the gff file
 r_handle = open("!{gff}","r")
@@ -333,8 +334,10 @@ class IPSCustomTranslator(BiopythonTranslator):
 
 graphic_record = IPSCustomTranslator().translate_record("!{gff}")
 print(f'graphic_record.sequence:{graphic_record.sequence}')
-if graphic_record.sequence == None:
+if graphic_record.sequence == None and seq_len != -1:
     plot_len = seq_len/100.0
+elif graphic_record.sequence == None and seq_len == -1:
+    plot_len = 450 ## Arbitrary-ish, or should plot nicely at least. 
 else:
     plot_len = len(graphic_record.sequence)/100.0
 print(dir(graphic_record))
