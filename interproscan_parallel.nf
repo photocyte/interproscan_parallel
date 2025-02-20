@@ -84,7 +84,10 @@ process interproscan_run {
       ##Will try running with all tools, since it is now the Docker container. Readd this parameter if wanting to disable again: '-appl ${APPLS}' 
 
       ## New way, using a Singularity/Apptainer execution off the official interproscan Docker container
-      /opt/interproscan/interproscan.sh --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
+      echo "Confirming that non-Docker container data dependencies were bound/mounted properly:"
+      ls /opt/interproscan/data ## Confirming that the non Docker provided data dependencies were mounted/bound properly
+      mkdir -p interproscan_tmp
+      /opt/interproscan/interproscan.sh --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir interproscan_tmp
       '''
 }
 
