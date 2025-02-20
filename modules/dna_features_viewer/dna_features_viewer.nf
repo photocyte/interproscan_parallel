@@ -183,9 +183,9 @@ w_handle = open("mod/!{input_gff}","w")
 spacing = 65
 
 for l in r_handle.readlines():
-    split_l = l.split("\\t")
     if l[0] == "#":
         continue
+    split_l = l.split("\\t")
     starts.append(int(split_l[3]))
     stops.append(int(split_l[4]))
 r_handle.close()
@@ -276,9 +276,12 @@ accepted_types = ["protein_match","hmmsearch"] ## Only used for coloration of th
 ##This just sets the pep_name from the seqid in the gff file
 r_handle = open("!{gff}","r")
 for l in r_handle.readlines():
-    split_l = l.split("\\t")
+    l = l.strip()
+    if len(l) == 0:
+        continue
     if l[0] == "#":
         continue
+    split_l = l.split("\\t")
     if len(split_l) > 2 and (split_l[2] in accepted_types or accept_all):
         pep_name = split_l[0]
     if split_l[2] == "polypeptide":
