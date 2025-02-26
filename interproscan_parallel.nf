@@ -78,16 +78,41 @@ process interproscan_run {
       ##Old way, using the manually installed interproscan 
       ##/home/tfallon/software/interproscan-5.63-95.0/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
 
-      ##Removed MobiDBLite, as it had been crashing
-      ##CDD was also crashing with a rpsbproc dependency issue
-      ##APPLS="COILS,Gene3D,HAMAP,PANTHER,Pfam,PIRSF,PRINTS,PROSITEPATTERNS,PROSITEPROFILES,SFLD,SMART,SUPERFAMILY,TIGRFAM"
-      ##Will try running with all tools, since it is now the Docker container. Readd this parameter if wanting to disable again: '-appl ${APPLS}' 
+      ##Removed MobiDBLite, as it had been crashing. Even with the Docker container, MobiDBLite seems to have a memory leak.
+      APPLS="AntiFam,CDD,Coils,FunFam,Gene3D,Hamap,MobiDBLite,NCBIfam,Pfam,PIRSF,PIRSR,PRINTS,ProSitePatterns,ProSiteProfiles,SFLD,SMART,SUPERFAMILY"
+
+      ## As of 2025-02-26 (running from the Docker container), here are all the appls:
+      #Available analyses:
+      #                AntiFam (8.0) : AntiFam is a resource of profile-HMMs designed to identify spurious protein predictions.
+      #                    CDD (3.21) : CDD predicts protein domains and families based on a collection of well-annotated multiple sequence alignment models.
+      #                  Coils (2.2.1) : Prediction of coiled coil regions in proteins.
+      #                 FunFam (4.3.0) : Prediction of functional annotations for novel, uncharacterized sequences.
+      #                 Gene3D (4.3.0) : Structural assignment for whole genes and genomes using the CATH domain structure database.
+      #                  Hamap (2023_05) : High-quality Automated and Manual Annotation of Microbial Proteomes.                                                                                                                                     
+      #             MobiDBLite (4.0) : Prediction of intrinsically disordered regions in proteins.                                                                                                                                                  
+      #                NCBIfam (17.0) : NCBIfam is a collection of protein families based on Hidden Markov Models (HMMs).
+      #                   Pfam (37.2) : A large collection of protein families, each represented by multiple sequence alignments and hidden Markov models (HMMs).
+      #                  PIRSF (3.10) : The PIRSF concept is used as a guiding principle to provide comprehensive and non-overlapping clustering of UniProtKB sequences into a hierarchical order to reflect their evolutionary relationships.
+      #                  PIRSR (2023_05) : PIRSR is a database of protein families based on hidden Markov models (HMMs) and Site Rules.
+      #                 PRINTS (42.0) : A compendium of protein fingerprints - a fingerprint is a group of conserved motifs used to characterise a protein family.
+      #        ProSitePatterns (2023_05) : PROSITE consists of documentation entries describing protein domains, families and functional sites as well as associated patterns and profiles to identify them.
+      #        ProSiteProfiles (2023_05) : PROSITE consists of documentation entries describing protein domains, families and functional sites as well as associated patterns and profiles to identify them.
+      #                   SFLD (4) : SFLD is a database of protein families based on hidden Markov models (HMMs).
+      #                  SMART (9.0) : SMART allows the identification and analysis of domain architectures based on hidden Markov models (HMMs).                                                                                         
+      #            SUPERFAMILY (1.75) : SUPERFAMILY is a database of structural and functional annotations for all proteins and genomes.
+
+      #Deactivated analyses:
+      #                PANTHER (19.0) : Analysis Panther is deactivated, because the resources expected at the following paths do not exist: data/panther/19.0/famhmm/binHmm
+      #                Phobius (1.01) : Analysis Phobius is deactivated, because the resources expected at the following paths do not exist: /opt/interproscan/licensed/phobius/phobius.pl
+      #            SignalP_EUK (4.1) : Analysis SignalP_EUK is deactivated, because the resources expected at the following paths do not exist: /opt/interproscan/licensed/signalp/signalp
+      #  SignalP_GRAM_NEGATIVE (4.1) : Analysis SignalP_GRAM_NEGATIVE is deactivated, because the resources expected at the following paths do not exist: /opt/interproscan/licensed/signalp/signalp
+      #  SignalP_GRAM_POSITIVE (4.1) : Analysis SignalP_GRAM_POSITIVE is deactivated, because the resources expected at the following paths do not exist: /opt/interproscan/licensed/signalp/signalp
 
       ## New way, using a Singularity/Apptainer execution off the official interproscan Docker container
       echo "Confirming that non-Docker container data dependencies were bound/mounted properly:"
       ls /opt/interproscan/data ## Confirming that the non Docker provided data dependencies were mounted/bound properly
       mkdir -p interproscan_tmp
-      /opt/interproscan/interproscan.sh --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir interproscan_tmp
+      /opt/interproscan/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir interproscan_tmp
       '''
 }
 
