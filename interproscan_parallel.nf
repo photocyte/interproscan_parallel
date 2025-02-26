@@ -79,7 +79,7 @@ process interproscan_run {
       ##/home/tfallon/software/interproscan-5.63-95.0/interproscan.sh -appl ${APPLS} --disable-precalc --iprlookup --pathways --goterms --enable-tsv-residue-annot --cpu !{task.cpus} -i !{inputFasta} --tempdir ./
 
       ##Removed MobiDBLite, as it had been crashing. Even with the Docker container, MobiDBLite seems to have a memory leak.
-      APPLS="AntiFam,CDD,Coils,FunFam,Gene3D,Hamap,MobiDBLite,NCBIfam,Pfam,PIRSF,PIRSR,PRINTS,ProSitePatterns,ProSiteProfiles,SFLD,SMART,SUPERFAMILY"
+      APPLS="AntiFam,CDD,Coils,FunFam,Gene3D,Hamap,NCBIfam,Pfam,PIRSF,PIRSR,PRINTS,ProSitePatterns,ProSiteProfiles,SFLD,SMART,SUPERFAMILY"
 
       ## As of 2025-02-26 (running from the Docker container), here are all the appls:
       #Available analyses:
