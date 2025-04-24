@@ -34,7 +34,10 @@ wget https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/${VERSION}/alt/interprosc
 md5sum -c interproscan-data-${VERSION}.tar.gz.md5
 tar -pxzf interproscan-data-${VERSION}.tar.gz
 
-## Files & executables are supplied by the Docker image.
+echo "tarball passed checksum"
+echo "Now running the 'python3 setup.py -f interproscan.properties' command..."
+
+## Files & executables are supplied by the Docker/Singularity/Apptainer image.
 ln -s /opt/interproscan/interproscan.properties interproscan-*/
 ln -s /opt/interproscan/setup.py interproscan-*/
 ln -s /opt/interproscan/bin interproscan-*/
