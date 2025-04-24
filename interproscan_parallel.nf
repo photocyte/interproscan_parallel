@@ -594,7 +594,7 @@ workflow {
     generate_svg_colors(gff_nested_filter.out.remaining_gffs)
     split_gff_by_seqid(gff_nested_filter.out.remaining_gffs)
 
-    gff_w_color_renaming = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath(params.renaming))
+    gff_w_color_renaming = split_gff_by_seqid.out.flatten().combine(generate_svg_colors.out).combine(channel.fromPath("$projectDir/dataset/renaming.tsv"))
     
     DNA_features_viewer(gff_w_color_renaming)
     

@@ -20,5 +20,5 @@ NF_SCR="$(pwd)/interproscan_parallel.nf"
 #cd ../../../
 
 ## Running the InterProScan annotation and graphical plotting for the peptide FASTA of the 3 PKZILLAs:
-nextflow run ${NF_SCR} -r main -latest -resume --fasta PKZILLA-1-on-B.loci.nt.rename.consensus.fa.pep.fa --renaming ./dataset/renaming.tsv
+nextflow run ${NF_SCR} -r main -latest -resume --fasta PKZILLA-1-on-B.loci.nt.rename.consensus.fa.pep.fa
 
