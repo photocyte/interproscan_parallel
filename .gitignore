@@ -3,3 +3,5 @@
 results
 work
 dependencies
+apptainer/
+singularity/
