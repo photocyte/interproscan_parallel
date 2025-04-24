@@ -11,7 +11,7 @@ NF_SCR="$(pwd)/interproscan_parallel.nf"
 #export SINGULARITY_CACHEDIR="$(pwd)/container_executor_cache"
 #export SINGULARITY_TMPDIR="$(pwd)/container_executor_cache"
 #export TMPDIR="$(pwd)/container_executor_cache"
-#nextflow run ${NF_SCR} -c download.config -latest -resume -entry download_data ## Used to download the interproscan docker/singularity dependency data (HMMs, etc.)
+#nextflow run ${NF_SCR} -c conf/download.config -latest -resume -entry download_data ## Used to download the interproscan docker/singularity dependency data (HMMs, etc.)
 
 ## Running the InterProScan annotation and graphical plotting for the peptide FASTA of the 3 PKZILLAs:
 nextflow run ${NF_SCR} -r main -latest -resume --fasta PKZILLA-1-on-B.loci.nt.rename.consensus.fa.pep.fa --renaming ./dataset/renaming.tsv
