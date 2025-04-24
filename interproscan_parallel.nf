@@ -56,7 +56,7 @@ rm -f interproscan-data-${VERSION}.tar.gz
 
 process interproscan_run {
     publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
-    cpus 8
+    cpus 4
     //scratch true
     //scratch 'ram-disk' // Can't use this, plus nextflow.config singularity.runOptions -B mounting at the same time.
     //stageInMode 'copy'
