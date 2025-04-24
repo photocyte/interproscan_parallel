@@ -1,6 +1,3 @@
-#ln -s ../../20230726_12B1_v1.1/gene_models/12B1_v1.1.gff3__12B1_scaffolds_v1.1.fasta.pep.fa.gz .
-#seqkit grep -n -r -p "PKZILLA" 12B1_v1.1.gff3__12B1_scaffolds_v1.1.fasta.pep.fa.gz > PKZILLA_12B1_v1.1.gff3__12B1_scaffolds_v1.1.fasta.pep.fa
-
 #NF_SCR="https://github.com/photocyte/interproscan_parallel"
 NF_SCR="$(pwd)/interproscan_parallel.nf"
 
