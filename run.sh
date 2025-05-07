@@ -16,7 +16,7 @@ export SINGULARITY_CACHEDIR="${TOTAL_TMPDIR}"
 export SINGULARITY_TMPDIR="${TOTAL_TMPDIR}"
 export TMPDIR="${TOTAL_TMPDIR}"
 
-#nextflow run ${NF_SCR} -c conf/download.config -latest -resume -entry download_data ## Used to download the interproscan docker/singularity dependency data (HMMs, etc.)
+#nextflow run ${NF_SCR} -c conf/download.config -latest -resume -entry download_data ## Used to download the interproscan docker/singularity dependency data (HMMs, etc.). It is about 50 GB in total.
 
 ## An example of how to symlink the accessory data, if interproscan_parallel was run as a subdirectory of the parent directory:
 #mkdir -p dependencies/download_interproscan_docker_data/interproscan-5.73-104.0/
