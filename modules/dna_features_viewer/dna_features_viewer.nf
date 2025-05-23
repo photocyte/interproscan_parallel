@@ -215,28 +215,50 @@ output:
  path "mod/*"
 shell:  
 '''
-#! /usr/bin/env python
+#!/usr/bin/env python
 import os
-os.mkdir('mod')
 
+os.mkdir('mod')
 max_feature_num = 30
 subtract_offset = 0
-r_handle = open("!{input_gff}","r")
-i=1
-fnum=1
-w_handle = open('mod/{index}_!{input_gff}'.format(index=fnum),'w')
+r_handle = open("!{input_gff}", "r")
+i = 1
+fnum = 1
+w_handle = None
+current_file_has_content = False
+
 for l in r_handle.readlines():
-    split_l = l.split("\\t")
+    split_l = l.split("\t")
     if l[0] == "#":
         continue
-    w_handle.write("\t".join([split_l[0],split_l[1],split_l[2],str(int(split_l[3])-subtract_offset),str(int(split_l[4])-subtract_offset),split_l[5],split_l[6],split_l[7],split_l[8]])+os.linesep)
+    
+    # Open new file only when we have actual content to write
+    if w_handle is None:
+        w_handle = open('mod/{index}_!{input_gff}'.format(index=fnum), 'w')
+        current_file_has_content = False
+    
+    w_handle.write("\t".join([split_l[0], split_l[1], split_l[2], 
+                              str(int(split_l[3]) - subtract_offset), 
+                              str(int(split_l[4]) - subtract_offset), 
+                              split_l[5], split_l[6], split_l[7], split_l[8]]) + os.linesep)
+    current_file_has_content = True
+    
     if i == max_feature_num:
         w_handle.close()
         fnum += 1
-        subtract_offset = int(split_l[4])+9
-        w_handle = open('mod/{index}_!{input_gff}'.format(index=fnum),'w')
-        i=0
-    i+=1 
+        subtract_offset = int(split_l[4]) + 9
+        w_handle = None  # Don't open new file until we have content
+        i = 0
+    i += 1
+
+# Close the final file if it exists and has content
+if w_handle is not None:
+    w_handle.close()
+    # If the last file has no content, remove it
+    if not current_file_has_content:
+        os.remove('mod/{index}_!{input_gff}'.format(index=fnum))
+
+r_handle.close()
 '''
 }
 
