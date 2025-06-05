@@ -34,7 +34,7 @@ w_handle.close()
 
 process svg_2_pdf {
 //Running off a singularity container
-publishDir "results/${task.process}",overwrite:true,mode:'link'
+publishDir "results/${task.process.replaceAll(':', '--')}",overwrite:true,mode:'link'
 input:
  path svg
 output:
@@ -49,7 +49,7 @@ inkscape ${svg} --export-pdf=${svg}.pdf
 
 process pdf_2_PDF_A_1B {
 conda 'ghostscript'
-publishDir "results/${task.process}",overwrite:true,mode:'link'
+publishDir "results/${task.process.replaceAll(':', '--')}",overwrite:true,mode:'link'
 input:
  path pdf
 output:
@@ -64,7 +64,7 @@ mkdir -p output
 }
 
 process svg_utils_merge {
- publishDir "results/${task.process}",overwrite:true,mode:'link'
+ publishDir "results/${task.process.replaceAll(':', '--')}",overwrite:true,mode:'link'
  conda 'svgutils' 
  input:
   path collected_SVGs
@@ -114,7 +114,7 @@ svgutils.compose.Figure("30cm", str(len(files)*1)+"cm",
 process svg_resize_page {
 //conda "inkscape"
 //Runs off a container instead.
-publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
 input:
  path svg
 output:
@@ -130,7 +130,7 @@ inkscape --actions="select-all; transform-scale:0.01; fit-canvas-to-selection; e
 
 process split_gff_by_seqid {
     cpus 1
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     conda 'genometools-genometools'
     cache 'deep'
     input:
@@ -148,7 +148,7 @@ process split_gff_by_seqid {
 }
 
 process centroid_gff_features {
-publishDir "results/${task.process}", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", mode: 'link',overwrite:'true'
 input:
  path input_gff
 output:
@@ -161,7 +161,7 @@ cat !{input_gff} | awk -v "FS=\t" -v "OFS=\t" '{print $1,$2,$3,int(($4+$5)/2-30)
 }
 
 process equally_distribute_gff_features {
-publishDir "results/${task.process}", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", mode: 'link',overwrite:'true'
 conda 'numpy'
 input:
  path input_gff
@@ -208,7 +208,7 @@ w_handle.close()
 }
 
 process split_and_restart_gff_by_max_features {
-publishDir "results/${task.process}", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", mode: 'link',overwrite:'true'
 input:
  path input_gff
 output:
@@ -263,7 +263,7 @@ r_handle.close()
 }
 
 process DNA_features_viewer {
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     conda 'matplotlib dna_features_viewer bcbio-gff'
     cache 'deep'
     input:

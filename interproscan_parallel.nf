@@ -11,7 +11,7 @@ include { generate_svg_colors ; svg_2_pdf ; svg_utils_merge ; svg_resize_page ; 
 //include { download_pfam_A ; prepare_pfam_A ; pfam_run ; hmmpress_generic ; hmm_subset } from '/home/tfallon/source/nextflow/pfam_nf/pfam.nf'
 
 process download_ipr2go {
-storeDir "results/${task.process}"
+storeDir "results/${task.process.replaceAll(':', '--')}"
 output:
  path "interpro2go.txt"
 shell:
@@ -55,7 +55,7 @@ rm -f interproscan-data-${VERSION}.tar.gz
 }
 
 process interproscan_run {
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     cpus 4
     //scratch true
     //scratch 'ram-disk' // Can't use this, plus nextflow.config singularity.runOptions -B mounting at the same time.
@@ -176,7 +176,7 @@ tail -n +`grep -n "##FASTA" !{gff} | cut -d : -f 1` !{gff} | grep -v "##FASTA" >
 }
 
 process gff_append_name_to_seqid_ipr {
-publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
 cpus 1
 input:
  path gff
@@ -348,7 +348,7 @@ cat fastas.txt | xargs -n 1 seqkit seq > ipr_merged.fasta
 
 process merge_gff {
     cpus 1
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     conda 'genometools-genometools'
     input:
      path collected_Gffs
@@ -366,7 +366,7 @@ process merge_gff {
 }
 
 process gt_extractfeat {
-publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
 conda 'genometools-genometools seqkit'
 input:
  path gff
@@ -390,7 +390,7 @@ seqkit seq ./results/*.fa | seqkit replace -p ":" -r "=" > !{gff}.fa
 
 process ipr_svg {
     cpus 1
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     input:
      path xml
     output:
@@ -405,7 +405,7 @@ process ipr_svg {
 
 process ipr_shorten_gff {
     cpus 1
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     input:
      path gff
     output:
@@ -420,7 +420,7 @@ process ipr_shorten_gff {
 
 process gt_sketch_svg {
     cpus 1
-    publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+    publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
     input:
      tuple path(gff),path(style_file)
     output:
@@ -443,7 +443,7 @@ process gt_sketch_svg {
 }
 
 process extract_non_annotated {
-publishDir "results/${task.process}", pattern: "", mode: 'link',overwrite:'true'
+publishDir "results/${task.process.replaceAll(':', '--')}", pattern: "", mode: 'link',overwrite:'true'
 input:
  path gff
  path fasta
