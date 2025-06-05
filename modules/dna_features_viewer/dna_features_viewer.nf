@@ -392,6 +392,26 @@ workflow beads_on_string {
 
 }
 
+workflow beads_on_string_unwrapped {
+    gff_ch = Channel.fromPath(params.gff)
+    renaming_ch = Channel.fromPath(params.renaming)
+    colors_ch = Channel.fromPath(params.colors)
+    
+    // Use the same preprocessing as beads_on_string but skip the wrapping
+    centroid_gff_features(gff_ch)
+    equally_distribute_gff_features(centroid_gff_features.out)
+    split_gff_by_seqid(equally_distribute_gff_features.out)
+    
+    // Mix the unwrapped GFFs directly into gff_w_color, bypassing split_and_restart_gff_by_max_features
+    gff_w_color = split_gff_by_seqid.out.flatten().combine(colors_ch).combine(renaming_ch)
+    DNA_features_viewer(gff_w_color)
+
+    svg_utils_merge(DNA_features_viewer.out.collect())
+    svg_resize_page(svg_utils_merge.out)
+    svg_2_pdf(DNA_features_viewer.out.mix(svg_resize_page.out))
+    pdf_2_PDF_A_1B(svg_2_pdf.out)
+}
+
 workflow {
     gff_ch = Channel.fromPath(params.gff)
     centroid_gff_features(gff_ch)
