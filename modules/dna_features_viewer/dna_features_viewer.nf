@@ -406,9 +406,8 @@ workflow beads_on_string_unwrapped {
     gff_w_color = split_gff_by_seqid.out.flatten().combine(colors_ch).combine(renaming_ch)
     DNA_features_viewer(gff_w_color)
 
-    svg_utils_merge(DNA_features_viewer.out.collect())
-    svg_resize_page(svg_utils_merge.out)
-    svg_2_pdf(DNA_features_viewer.out.mix(svg_resize_page.out))
+    svg_resize_page(DNA_features_viewer.out)
+    svg_2_pdf(svg_resize_page.out)
     pdf_2_PDF_A_1B(svg_2_pdf.out)
 }
 
